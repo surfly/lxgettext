@@ -4,7 +4,7 @@ import re
 
 import polib
 
-gettext_re = re.compile("\gettext\(['\"]([\w\s]*)['\"]\)")
+gettext_re = re.compile("""\gettext\(['"](.*)['"]\)""", re.DOTALL)
 
 INFO_TEMPLATE = """#: {occurrence}
 msgid "{msgid}"
@@ -33,7 +33,7 @@ def valid_path(path):
 def get_args():
     parser = argparse.ArgumentParser("Extract gettext records from the files using `gettext(...)` as a keyword")
     parser.add_argument(
-        "input",
+        "path",
         metavar="PATH",
         type=valid_path,
         action='store',
@@ -84,11 +84,11 @@ def update_occurrences(po_obj, data, filename):
         entry.occurrences = get_occurrences(entry.msgid, data, filename)
 
 
-def main(args):
-    filename = os.path.basename(args.input)
-    with open(args.input, "rb") as f:
-        data = f.read()
-
+def generate_po(data, args):
+    """
+    Generates po file with messages to translate
+    """
+    filename = os.path.basename(args.path)
     matches = gettext_re.findall(data)
 
     if args.output:
@@ -107,15 +107,25 @@ def main(args):
                 po.append(entry)
         update_occurrences(po, data, filename)
         po.save()
+        return "Done."
     else:
         # Show captured data
+        info = "Empty"
         for match in matches:
             occurrence = get_occurrences(match, data, filename)
             info = INFO_TEMPLATE.format(
                 occurrence=", ".join("%s:%s" % (fn, ln) for (fn, ln) in occurrence),
                 msgid=match
             )
-            print(info)
+        return info
+
+
+def main(args):
+    print("Reading file %s..." % args.path)
+    with open(args.path, "rb") as f:
+        data = f.read()
+    result = generate_po(data, args)
+    print(result)
 
 
 if __name__ == '__main__':
