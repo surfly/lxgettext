@@ -13,19 +13,6 @@ INFO_TEMPLATE = """#: {occurrence}
 msgid "{msgid}"
 """
 
-METADATA = {
-    "Project-Id-Version": "",
-    "Report-Msgid-Bugs-To": "support@surfly.com",
-    "POT-Creation-Date": now,
-    "PO-Revision-Date": now,
-    "Last-Translator": "Admin <support@surfly.com>",
-    "Language-Team": "LANGUAGE <support@surfly.com>",
-    "Language": "en",
-    "MIME-Version": "1.0",
-    "Content-Type": "text/plain; charset=utf-8",
-    "Content-Transfer-Encoding": "8bit"
-}
-
 
 def valid_path(path):
     if not os.path.exists(path):
@@ -66,15 +53,19 @@ def get_args():
 
 
 def update_metadata(po, args):
-    updated = {
-        "POT-Creation-Date": now
+    metadata = {
+        "Project-Id-Version": args.version,
+        "Report-Msgid-Bugs-To": "support@surfly.com",
+        "POT-Creation-Date": now,
+        "PO-Revision-Date": now,
+        "Last-Translator": "Admin <support@surfly.com>",
+        "Language-Team": "LANGUAGE <support@surfly.com>",
+        "Language": args.language,
+        "MIME-Version": "1.0",
+        "Content-Type": "text/plain; charset=utf-8",
+        "Content-Transfer-Encoding": "8bit"
     }
-    if args.version:
-        updated["Project-Id-Version"] = args.version
-    if args.language:
-        updated["Language"] = args.language
-
-    po.metadata.update(updated)
+    po.metadata.update(metadata)
 
 
 def is_new_entry(msgid, po_obj):
@@ -126,7 +117,6 @@ def generate_po(data, filename, args):
         # Create new po file if it does not exist
         if not os.path.exists(args.output):
             po = polib.POFile()
-            po.metadata = METADATA
             po.save(args.output)
 
         po = polib.pofile(args.output)
