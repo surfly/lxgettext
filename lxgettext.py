@@ -1,0 +1,123 @@
+import argparse
+import os
+import re
+
+import polib
+
+gettext_re = re.compile("\gettext\(['\"]([\w\s]*)['\"]\)")
+
+INFO_TEMPLATE = """#: {occurrence}
+msgid "{msgid}"
+"""
+
+METADATA = {
+    "Project-Id-Version": "widget c77634d-dirty",
+    "Report-Msgid-Bugs-To": "support@surfly.com",
+    "POT-Creation-Date": "2017-06-20 12:56+0000",
+    "PO-Revision-Date": "YEAR-MO-DA HO:MI+ZONE",
+    "Last-Translator": "FULL NAME <EMAIL@ADDRESS>",
+    "Language-Team": "LANGUAGE <LL@li.org>",
+    "Language": "nl",
+    "MIME-Version": "1.0",
+    "Content-Type": "text/plain; charset=CHARSET",
+    "Content-Transfer-Encoding": "8bit"
+}
+
+
+def valid_path(path):
+    if not os.path.exists(path):
+        raise argparse.ArgumentTypeError("File %s does not exist" % path)
+    return path
+
+
+def get_args():
+    parser = argparse.ArgumentParser("Extract gettext records from the files using `gettext(...)` as a keyword")
+    parser.add_argument(
+        "input",
+        metavar="PATH",
+        type=valid_path,
+        action='store',
+        help='Path to the file to extract gettext from'
+    )
+    parser.add_argument(
+        '-o', '--output',
+        default=False,
+        action='store',
+        help='Path to the *po file'
+    )
+    args = parser.parse_args()
+    return args
+
+
+def is_new_entry(msgid, po_obj):
+    """
+    Check if the entry already exists in po file
+    """
+    result = True
+    for entry in po_obj:
+        if entry.msgid == msgid:
+            result = False
+            break
+    return result
+
+
+def get_occurrences(msgid, data, filename):
+    """
+    Get message position in the source file
+    """
+    occurrences = []
+    if msgid in data:
+        pos = 0
+        while pos != -1:
+            pos = data.find(msgid, pos + 1)
+            if pos != -1:
+                line = data[:pos].count("\n")
+                occurrences.append((filename, line))
+    return occurrences
+
+
+def update_occurrences(po_obj, data, filename):
+    """
+    Update message occurrence
+    """
+    for entry in po_obj:
+        entry.occurrences = get_occurrences(entry.msgid, data, filename)
+
+
+def main(args):
+    filename = os.path.basename(args.input)
+    with open(args.input, "rb") as f:
+        data = f.read()
+
+    matches = gettext_re.findall(data)
+
+    if args.output:
+        # Write data to po file
+        #
+        # Create new po file if it does not exist
+        if not os.path.exists(args.output):
+            po = polib.POFile()
+            po.metadata = METADATA
+            po.save(args.output)
+
+        po = polib.pofile(args.output)
+        for match in matches:
+            if is_new_entry(match, po):
+                entry = polib.POEntry(msgid=match, msgstr="")
+                po.append(entry)
+        update_occurrences(po, data, filename)
+        po.save()
+    else:
+        # Show captured data
+        for match in matches:
+            occurrence = get_occurrences(match, data, filename)
+            info = INFO_TEMPLATE.format(
+                occurrence=", ".join("%s:%s" % (fn, ln) for (fn, ln) in occurrence),
+                msgid=match
+            )
+            print(info)
+
+
+if __name__ == '__main__':
+    args = get_args()
+    main(args)
