@@ -14,25 +14,25 @@ class TestInputData(unittest.TestCase):
     def test_lonely_warrior_dq(self):
         data = """gettext("Warrior")"""
         expected = 'msgid "Warrior"'
-        result = generate_po(data, self.args)
+        result = generate_po(data, self.args.path, self.args)
         self.assertIn(expected, result)
 
     def test_lonely_warrior_sq(self):
         data = """gettext('Warrior')"""
         expected = 'msgid "Warrior"'
-        result = generate_po(data, self.args)
+        result = generate_po(data, self.args.path, self.args)
         self.assertIn(expected, result)
 
     def test_sentence(self):
         data = """gettext('I want ice cream')"""
         expected = 'msgid "I want ice cream"'
-        result = generate_po(data, self.args)
+        result = generate_po(data, self.args.path, self.args)
         self.assertIn(expected, result)
 
     def test_quotes(self):
         data = """gettext('H"O"T')"""
         expected = 'msgid "H"O"T"'
-        result = generate_po(data, self.args)
+        result = generate_po(data, self.args.path, self.args)
         self.assertIn(expected, result)
 
 
