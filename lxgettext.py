@@ -1,25 +1,28 @@
 import argparse
+import datetime
 import os
 import re
 
 import polib
 
-gettext_re = re.compile("""\gettext\(['"](.*)['"]\)""", re.DOTALL)
+gettext_re = re.compile("""\gettext\(['"]([\w\s'"]*)['"]\)""")
+
+now = datetime.datetime.today().strftime("%Y-%m-%d %X%z")
 
 INFO_TEMPLATE = """#: {occurrence}
 msgid "{msgid}"
 """
 
 METADATA = {
-    "Project-Id-Version": "widget c77634d-dirty",
+    "Project-Id-Version": "",
     "Report-Msgid-Bugs-To": "support@surfly.com",
-    "POT-Creation-Date": "2017-06-20 12:56+0000",
-    "PO-Revision-Date": "YEAR-MO-DA HO:MI+ZONE",
-    "Last-Translator": "FULL NAME <EMAIL@ADDRESS>",
-    "Language-Team": "LANGUAGE <LL@li.org>",
-    "Language": "nl",
+    "POT-Creation-Date": now,
+    "PO-Revision-Date": now,
+    "Last-Translator": "Admin <support@surfly.com>",
+    "Language-Team": "LANGUAGE <support@surfly.com>",
+    "Language": "en",
     "MIME-Version": "1.0",
-    "Content-Type": "text/plain; charset=CHARSET",
+    "Content-Type": "text/plain; charset=utf-8",
     "Content-Transfer-Encoding": "8bit"
 }
 
@@ -35,6 +38,7 @@ def get_args():
     parser.add_argument(
         "path",
         metavar="PATH",
+        nargs="+",
         type=valid_path,
         action='store',
         help='Path to the file to extract gettext from'
@@ -45,8 +49,32 @@ def get_args():
         action='store',
         help='Path to the *po file'
     )
+    parser.add_argument(
+        '-v', '--version',
+        default=False,
+        action='store',
+        help='Version of the source file'
+    )
+    parser.add_argument(
+        '-l', '--language',
+        default=False,
+        action='store',
+        help='Language of the source file'
+    )
     args = parser.parse_args()
     return args
+
+
+def update_metadata(po, args):
+    updated = {
+        "POT-Creation-Date": now
+    }
+    if args.version:
+        updated["Project-Id-Version"] = args.version
+    if args.language:
+        updated["Language"] = args.language
+
+    po.metadata.update(updated)
 
 
 def is_new_entry(msgid, po_obj):
@@ -84,11 +112,10 @@ def update_occurrences(po_obj, data, filename):
         entry.occurrences = get_occurrences(entry.msgid, data, filename)
 
 
-def generate_po(data, args):
+def generate_po(data, filename, args):
     """
     Generates po file with messages to translate
     """
-    filename = os.path.basename(args.path)
     matches = gettext_re.findall(data)
 
     if args.output:
@@ -106,6 +133,7 @@ def generate_po(data, args):
                 entry = polib.POEntry(msgid=match, msgstr="")
                 po.append(entry)
         update_occurrences(po, data, filename)
+        update_metadata(po, args)
         po.save()
         return "Done."
     else:
@@ -121,11 +149,13 @@ def generate_po(data, args):
 
 
 def main(args):
-    print("Reading file %s..." % args.path)
-    with open(args.path, "rb") as f:
-        data = f.read()
-    result = generate_po(data, args)
-    print(result)
+    for item in args.path:
+        print("  Reading file %s..." % item)
+        filename = os.path.basename(item)
+        with open(item, "rb") as f:
+            data = f.read()
+        result = generate_po(data, filename, args)
+        print(result)
 
 
 if __name__ == '__main__':
