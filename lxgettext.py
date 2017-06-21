@@ -109,7 +109,9 @@ def update_occurrences(po_obj, data, filename):
     Update message occurrence
     """
     for entry in po_obj:
-        entry.occurrences = get_occurrences(entry.msgid, data, filename)
+        occurrences = get_occurrences(entry.msgid, data, filename)
+        if occurrences:
+            entry.occurrences = occurrences
 
 
 def generate_po(data, filename, args):
@@ -151,10 +153,9 @@ def generate_po(data, filename, args):
 def main(args):
     for item in args.path:
         print("  Reading file %s..." % item)
-        filename = os.path.basename(item)
         with open(item, "rb") as f:
             data = f.read()
-        result = generate_po(data, filename, args)
+        result = generate_po(data, item, args)
         print(result)
 
 
