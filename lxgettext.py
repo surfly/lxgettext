@@ -8,7 +8,8 @@ import polib
 COLOUR_GREEN = '\033[92m'
 COLOUR_END = '\033[0m'
 
-gettext_re = re.compile("""\gettext\(['"](.+?)['"]\)""")
+KEYWORD = "gettext"
+gettext_re = re.compile("""%s\(['"](.+?)['"]\)""" % KEYWORD)
 
 now = datetime.datetime.today().strftime("%Y-%m-%d %X%z")
 
@@ -96,8 +97,10 @@ def get_occurrences(msgid, data, filename):
         while pos != -1:
             pos = data.find(msgid, pos + 1)
             if pos != -1:
-                line = data[:pos].count("\n") + 1
-                occurrences.append((filename, line))
+                # Check that it is prefixed by keyword
+                if "gettext" in data[max(0, pos - len(KEYWORD) * 2 - 1):pos]:
+                    line = data[:pos].count("\n") + 1
+                    occurrences.append((filename, line))
     return occurrences
 
 
