@@ -96,7 +96,7 @@ def get_occurrences(msgid, data, filename):
         while pos != -1:
             pos = data.find(msgid, pos + 1)
             if pos != -1:
-                line = data[:pos].count("\n")
+                line = data[:pos].count("\n") + 1
                 occurrences.append((filename, line))
     return occurrences
 
