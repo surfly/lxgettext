@@ -5,7 +5,10 @@ import re
 
 import polib
 
-gettext_re = re.compile("""\gettext\(['"]([\w\s'"]*)['"]\)""")
+COLOUR_GREEN = '\033[92m'
+COLOUR_END = '\033[0m'
+
+gettext_re = re.compile("""\gettext\(['"](.+?)['"]\)""")
 
 now = datetime.datetime.today().strftime("%Y-%m-%d %X%z")
 
@@ -53,6 +56,9 @@ def get_args():
 
 
 def update_metadata(po, args):
+    """
+    Update po file metadata
+    """
     metadata = {
         "Project-Id-Version": args.version,
         "Report-Msgid-Bugs-To": "support@surfly.com",
@@ -110,6 +116,7 @@ def generate_po(data, filename, args):
     Generates po file with messages to translate
     """
     matches = gettext_re.findall(data)
+    new_entries = 0
 
     if args.output:
         # Write data to po file
@@ -122,18 +129,22 @@ def generate_po(data, filename, args):
         po = polib.pofile(args.output)
         for match in matches:
             if is_new_entry(match, po):
+                new_entries = new_entries + 1
                 entry = polib.POEntry(msgid=match, msgstr="")
                 po.append(entry)
         update_occurrences(po, data, filename)
         update_metadata(po, args)
         po.save()
-        return "Done."
+        result = "  %s new, %s total" % (new_entries, len(matches))
+        if new_entries > 0:
+            result = COLOUR_GREEN + result + COLOUR_END
+        return result
     else:
         # Show captured data
-        info = "Empty"
+        info = ""
         for match in matches:
             occurrence = get_occurrences(match, data, filename)
-            info = INFO_TEMPLATE.format(
+            info = info + INFO_TEMPLATE.format(
                 occurrence=", ".join("%s:%s" % (fn, ln) for (fn, ln) in occurrence),
                 msgid=match
             )
@@ -142,7 +153,7 @@ def generate_po(data, filename, args):
 
 def main(args):
     for item in args.path:
-        print("  Reading file %s..." % item)
+        print("%s:" % item)
         with open(item, "rb") as f:
             data = f.read()
         result = generate_po(data, item, args)
