@@ -1,6 +1,6 @@
 import unittest
 
-from lxgettext import generate_po
+from lxgettext import generate_po, get_occurrences
 
 
 class TestInput(unittest.TestCase):
@@ -69,14 +69,49 @@ class TestInput(unittest.TestCase):
 
     def test_double_string(self):
         data = """
-                if (!this.options.ui_off && !this.$store.state.delayedEnd) {
-                    let msg = this.$gettext('You have an active cobrowsing session, are you sure you want to close this window?');
-                    e.returnValue = msg;
-                    return msg;
+    if (!this.options.ui_off && !this.$store.state.delayedEnd) {
+        let msg = this.$gettext('You have an active cobrowsing session, are you sure you want to close this window?');
+        e.returnValue = msg;
+        return msg;
                 }
         """
         result = generate_po(data, self.args.path, self.args)
-        self.assertIn('msgid "You have an active cobrowsing session, are you sure you want to close this window?"', result)
+        self.assertIn(
+            'msgid "You have an active cobrowsing session, are you sure you want to close this window?"', result
+        )
+
+    def test_space(self):
+        data = """gettext("Warrior")"""
+        expected = 'msgid "Warrior"'
+        result = generate_po(data, self.args.path, self.args)
+        self.assertIn(expected, result)
+
+
+class TestOccurrences(unittest.TestCase):
+    def test_simple(self):
+        data = "\n\ngettext('banana')\n"
+        msgid = "banana"
+        expected = [('file.js', 3)]
+        result = get_occurrences(msgid, data, "file.js")
+        self.assertEqual(expected, result)
+
+    def test_multiple(self):
+        data = "\n\ngettext('banana')\ngettext('banana')\n"
+        msgid = "banana"
+        expected = [('file.js', 3), ('file.js', 4)]
+        result = get_occurrences(msgid, data, "file.js")
+        self.assertEqual(expected, result)
+
+    def test_fake(self):
+        data = """
+        There is a fake instance with name banana
+        var a = gettext("banana");
+        var banana;
+        """
+        msgid = "banana"
+        expected = [('file.js', 3)]
+        result = get_occurrences(msgid, data, "file.js")
+        self.assertEqual(expected, result)
 
 
 if __name__ == '__main__':
