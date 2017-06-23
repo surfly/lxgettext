@@ -159,7 +159,8 @@ def generate_po(data, filename, args):
         return info
 
 
-def main(args):
+def main():
+    args = get_args()
     for item in args.path:
         print("%s:" % item)
         with open(item, "rb") as f:
@@ -169,5 +170,4 @@ def main(args):
 
 
 if __name__ == '__main__':
-    args = get_args()
-    main(args)
+    main()
