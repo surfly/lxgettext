@@ -1,6 +1,6 @@
 import unittest
 
-from lxgettext import generate_po, get_occurrences
+from lxgettext.lxgettext import generate_po, get_occurrences
 
 
 class TestInput(unittest.TestCase):
