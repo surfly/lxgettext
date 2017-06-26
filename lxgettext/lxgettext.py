@@ -56,6 +56,17 @@ def get_args():
     return args
 
 
+def get_number_of_entries(path):
+    """
+    Returns number of entries in the po file
+    """
+    count = 0
+    if os.path.exists(path):
+        po = polib.pofile(path)
+        count = len(po)
+    return count
+
+
 def update_metadata(po, args):
     """
     Update po file metadata
@@ -161,12 +172,18 @@ def generate_po(data, filename, args):
 
 def main():
     args = get_args()
+    entries_before = get_number_of_entries(args.output)
     for item in args.path:
         print("%s:" % item)
         with open(item, "rb") as f:
             data = f.read()
         result = generate_po(data, item, args)
         print(result)
+    entries_after = get_number_of_entries(args.output)
+    message = "Entries: %s / %s" % (entries_before, entries_after)
+    if entries_after > entries_before:
+        message = COLOUR_GREEN + message + COLOUR_END
+    print(message)
 
 
 if __name__ == '__main__':
