@@ -1,6 +1,6 @@
 from setuptools import setup, find_packages
 
-VERSION = "0.1.1"
+VERSION = "0.2.0"
 
 setup(
     name="lxgettext",
@@ -14,7 +14,10 @@ setup(
     test_suite="tests",
     install_requires=["polib==1.0.8"],
     entry_points={
-        "console_scripts": ["lxgettext = lxgettext.lxgettext:main"]
+        "console_scripts": [
+            "lxgettext = lxgettext.lxgettext:main",
+            "lpo2json = lxgettext.lpo2json:main"
+        ]
     },
     packages=find_packages(exclude=["tests"])
 )
