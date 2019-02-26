@@ -1,8 +1,8 @@
 import argparse
-import os
-import json
-import pprint
 import io
+import json
+import os
+import pprint
 
 import polib
 

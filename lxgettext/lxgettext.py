@@ -1,5 +1,6 @@
 import argparse
 import datetime
+import io
 import os
 import re
 
@@ -175,7 +176,7 @@ def main():
     entries_before = get_number_of_entries(args.output)
     for item in args.path:
         print("%s:" % item)
-        with open(item, "rb") as f:
+        with io.open(item, "r", encoding="utf8") as f:
             data = f.read()
         result = generate_po(data, item, args)
         print(result)

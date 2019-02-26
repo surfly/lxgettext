@@ -1,3 +1,4 @@
+# coding: utf8
 import unittest
 
 from lxgettext.lxgettext import generate_po, get_occurrences
@@ -83,6 +84,12 @@ class TestInput(unittest.TestCase):
     def test_space(self):
         data = """gettext("Warrior")"""
         expected = 'msgid "Warrior"'
+        result = generate_po(data, self.args.path, self.args)
+        self.assertIn(expected, result)
+
+    def test_utf(self):
+        data = """gettext("банана")"""
+        expected = 'msgid "банана"'
         result = generate_po(data, self.args.path, self.args)
         self.assertIn(expected, result)
 
