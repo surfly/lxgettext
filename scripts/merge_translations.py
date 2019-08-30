@@ -209,6 +209,12 @@ def combine_pofiles(po_files: list([polib.POFile]), language=None, stats=None) -
                 translations[entry.msgid] = [entry]
 
     new_po_file.extend(combine_poentries(es, stats=stats) for es in translations.values())
+
+    # sort alphabetically: ignore case, but lowercase wins ties against upper
+    # e.g. apple, Apple, aztec, Banana, carrot, Echo, email, eMail, ...
+    new_po_file.sort(key=lambda x: x.msgid, reverse=True)
+    new_po_file.sort(key=lambda x: x.msgid.lower())
+
     return new_po_file
 
 
