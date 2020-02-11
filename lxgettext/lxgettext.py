@@ -96,18 +96,6 @@ def update_metadata(po, args):
     po.metadata.update(metadata)
 
 
-def is_new_entry(msgid, po_obj):
-    """
-    Check if the entry already exists in po file
-    """
-    result = True
-    for entry in po_obj:
-        if entry.msgid == msgid:
-            result = False
-            break
-    return result
-
-
 def get_occurrences(msgid, data, filename):
     """
     Get message position in the source file
@@ -149,19 +137,35 @@ def generate_po(data, filename, args):
     matches = gettext_re.findall(data)
     new_entries = 0
 
-    if not os.path.exists(args.output):
-        po = polib.POFile()
-        po.save(args.output)
+    po = polib.pofile(args.output) if os.path.exists(args.output) \
+        else polib.POFile()
 
-    po = polib.pofile(args.output)
+    entries = {entry.msgid: entry for entry in po}
+
+    # remove all POEntries from the old PO file so we can start from scratch.
+    # entries (and possible translations) are retained in the entries dict.
+    if args.prune:
+        del po[:]
+
     for match in matches:
-        if is_new_entry(match, po):
-            new_entries = new_entries + 1
+
+        # if the string was already listed in the POFile, keep the POEntry in
+        # the POFile
+        try:
+            entry = entries[match]
+            if args.prune:
+                po.append(entry)
+
+        # if we've encountered a new string, add that to the POFile
+        except KeyError:
+            new_entries += 1
             entry = polib.POEntry(msgid=match, msgstr="")
+            entries[match] = entry
             po.append(entry)
+
     update_occurrences(po, data, filename)
     update_metadata(po, args)
-    po.save()
+    po.save(args.output)
     result = "  %s new, %s total" % (new_entries, len(matches))
     if new_entries > 0:
         result = COLOUR_GREEN + result + COLOUR_END
