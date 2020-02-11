@@ -10,7 +10,7 @@ COLOUR_GREEN = '\033[92m'
 COLOUR_END = '\033[0m'
 
 KEYWORD = "gettext"
-gettext_re = re.compile("""%s\(['"](.+?)['"]\)""" % KEYWORD)
+gettext_re = re.compile("""%s\\(['"](.+?)['"]\\)""" % KEYWORD)
 
 now = datetime.datetime.today().strftime("%Y-%m-%d %X%z")
 
@@ -26,7 +26,10 @@ def valid_path(path):
 
 
 def get_args():
-    parser = argparse.ArgumentParser("Extract gettext records from the files using `gettext(...)` as a keyword")
+    parser = argparse.ArgumentParser(
+        "Extract gettext records from the files using `gettext(...)` as a"
+        "keyword"
+    )
     parser.add_argument(
         "path",
         metavar="PATH",
@@ -165,7 +168,10 @@ def generate_po(data, filename, args):
         for match in matches:
             occurrence = get_occurrences(match, data, filename)
             info = info + INFO_TEMPLATE.format(
-                occurrence=", ".join("%s:%s" % (fn, ln) for (fn, ln) in occurrence),
+                occurrence=", ".join(
+                    "%s:%s" % (fn, ln)
+                    for (fn, ln) in occurrence
+                ),
                 msgid=match
             )
         return info
