@@ -143,44 +143,49 @@ def update_occurrences(po_obj, data, filename):
 def generate_po(data, filename, args):
     """
     Generates po file with messages to translate
+    Write data to po file
+    Create new po file if it does not exist
     """
     matches = gettext_re.findall(data)
     new_entries = 0
 
-    if args.output:
-        # Write data to po file
-        #
-        # Create new po file if it does not exist
-        if not os.path.exists(args.output):
-            po = polib.POFile()
-            po.save(args.output)
+    if not os.path.exists(args.output):
+        po = polib.POFile()
+        po.save(args.output)
 
-        po = polib.pofile(args.output)
-        for match in matches:
-            if is_new_entry(match, po):
-                new_entries = new_entries + 1
-                entry = polib.POEntry(msgid=match, msgstr="")
-                po.append(entry)
-        update_occurrences(po, data, filename)
-        update_metadata(po, args)
-        po.save()
-        result = "  %s new, %s total" % (new_entries, len(matches))
-        if new_entries > 0:
-            result = COLOUR_GREEN + result + COLOUR_END
-        return result
-    else:
-        # Show captured data
-        info = ""
-        for match in matches:
-            occurrence = get_occurrences(match, data, filename)
-            info = info + INFO_TEMPLATE.format(
-                occurrence=", ".join(
-                    "%s:%s" % (fn, ln)
-                    for (fn, ln) in occurrence
-                ),
-                msgid=match
-            )
-        return info
+    po = polib.pofile(args.output)
+    for match in matches:
+        if is_new_entry(match, po):
+            new_entries = new_entries + 1
+            entry = polib.POEntry(msgid=match, msgstr="")
+            po.append(entry)
+    update_occurrences(po, data, filename)
+    update_metadata(po, args)
+    po.save()
+    result = "  %s new, %s total" % (new_entries, len(matches))
+    if new_entries > 0:
+        result = COLOUR_GREEN + result + COLOUR_END
+    print(result)
+
+
+def show_po(data, filename):
+    """
+    Generates po file with messages to translate
+    """
+    matches = gettext_re.findall(data)
+
+    # Show captured data
+    info = ""
+    for match in matches:
+        occurrence = get_occurrences(match, data, filename)
+        info = info + INFO_TEMPLATE.format(
+            occurrence=", ".join(
+                "%s:%s" % (fn, ln)
+                for (fn, ln) in occurrence
+            ),
+            msgid=match
+        )
+    print(info)
 
 
 def main():
@@ -190,8 +195,10 @@ def main():
         print("%s:" % item)
         with io.open(item, "r", encoding="utf8") as f:
             data = f.read()
-        result = generate_po(data, item, args)
-        print(result)
+        if args.output:
+            generate_po(data, item, args)
+        else:
+            show_po(data, item)
     entries_after = get_number_of_entries(args.output)
     message = "Entries: %s / %s" % (entries_before, entries_after)
     if entries_after > entries_before:

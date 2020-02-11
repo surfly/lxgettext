@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# flake8: noqa
 '''
 merge_translations.py <output_locale_dir> <input_locale_dir>...
 compile several django projects' PO files into one

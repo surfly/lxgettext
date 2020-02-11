@@ -1,4 +1,5 @@
 # coding: utf8
+# flake8: E501
 import unittest
 
 from lxgettext.lxgettext import generate_po, get_occurrences
