@@ -39,6 +39,12 @@ def get_args():
         help='Path to the file to extract gettext from'
     )
     parser.add_argument(
+        '-p', '--prune',
+        action='store_true',
+        help="Remove existing entries that have a msgid that doesn't"
+        "correspond to any string in the input PATHs.",
+    )
+    parser.add_argument(
         '-o', '--output',
         default=False,
         action='store',
