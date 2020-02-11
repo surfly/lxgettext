@@ -1,0 +1,15 @@
+[[source]]
+name = "pypi"
+url = "https://pypi.org/simple"
+verify_ssl = true
+
+[dev-packages]
+flake8 = "*"
+pytest = "<4.7"
+zipp = "<2"
+
+[packages]
+polib = ">=1.1.0"
+
+[requires]
+python_version = "2.7"
