@@ -1,8 +1,13 @@
 # coding: utf8
 # flake8: E501
+
+import contextlib
+import os
+import shutil
+import tempfile
 import unittest
 
-from lxgettext.lxgettext import generate_po, get_occurrences
+from lxgettext.lxgettext import generate_po, get_occurrences, update_po
 
 
 class TestInput(unittest.TestCase):
@@ -116,6 +121,149 @@ class TestOccurrences(unittest.TestCase):
         expected = [('file.js', 3)]
         result = get_occurrences(msgid, data, "file.js")
         self.assertEqual(expected, result)
+
+
+@contextlib.contextmanager
+def tmpfile(contents=None):
+    try:
+        with tempfile.NamedTemporaryFile('w', delete=False) as f:
+            filepath = f.name
+            if contents is not None:
+                f.write(contents)
+        yield filepath
+    finally:
+        os.remove(filepath)
+
+
+@contextlib.contextmanager
+def tmpdir():
+    try:
+        dirname = tempfile.mkdtemp()
+        yield dirname
+    finally:
+        shutil.rmtree(dirname)
+
+
+class TestFilesystem(unittest.TestCase):
+
+    class Args(object):
+        def __init__(self, output, prune=False):
+            self.output = output
+            self.prune = prune
+            self.version = 'test'
+            self.language = 'xx'
+
+    def assertHasLines(self, expected, result):
+        '''
+        Assert that result contains contiguous lines in `expected` ignoring
+        indentation.
+        '''
+        lines = expected.strip().split('\n')
+        expected = '\n'.join(line.strip() for line in lines)
+        return self.assertIn(expected, result)
+
+    def test_new(self):
+        source = '''
+            gettext('test');
+        '''
+        expected = '''
+            #: test:2
+            msgid "test"
+            msgstr ""
+        '''
+
+        with tmpdir() as d:
+            path = os.path.join(d, 'xx.po')
+            update_po(source, 'test', self.Args(path, prune=True))
+            with open(path, 'r') as f:
+                result = f.read()
+
+        self.assertHasLines(expected, result)
+
+    def test_empty_add(self):
+        source = '''
+            gettext('test');
+        '''
+        expected = '''
+            #: test:2
+            msgid "test"
+            msgstr ""
+        '''
+
+        with tmpfile() as path:
+            update_po(source, 'test', self.Args(path, prune=True))
+            with open(path, 'r') as f:
+                result = f.read()
+
+        self.assertHasLines(expected, result)
+
+    def test_existing_add(self):
+        old_po = '''
+            #: test:100
+            msgid "already here"
+            msgstr "ereh ydaerla"
+        '''
+        source = '''
+            gettext('already here');
+            gettext('to be added');
+        '''
+        expected = '''
+            #: test:2
+            msgid "already here"
+            msgstr "ereh ydaerla"
+
+            #: test:3
+            msgid "to be added"
+            msgstr ""
+        '''
+
+        with tmpfile(old_po) as path:
+            update_po(source, 'test', self.Args(path, prune=True))
+            with open(path, 'r') as f:
+                result = f.read()
+
+        self.assertHasLines(expected, result)
+
+    def test_existing_prune_partial(self):
+        old_po = '''
+            #: test:100
+            msgid "test"
+            msgstr "tset"
+
+            #: test:200
+            msgid "removed"
+            msgstr "devomer"
+        '''
+        source = '''
+            gettext('test');
+        '''
+        expected = '''
+            #: test:2
+            msgid "test"
+            msgstr "tset"
+        '''
+
+        with tmpfile(old_po) as path:
+            update_po(source, 'test', self.Args(path, prune=True))
+            with open(path, 'r') as f:
+                result = f.read()
+
+        self.assertHasLines(expected, result)
+
+    def test_existing_prune_all(self):
+        old_po = '''
+            msgid "removed"
+            msgstr "devomer"
+        '''
+        source = '''
+        '''
+
+        with tmpfile(old_po) as path:
+            update_po(source, 'test', self.Args(path, prune=True))
+            with open(path, 'r') as f:
+                result = f.read()
+
+        self.assertNotIn('msgid "removed"', result)
 
 
 if __name__ == '__main__':
