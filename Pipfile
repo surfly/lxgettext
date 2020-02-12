@@ -5,8 +5,6 @@ verify_ssl = true
 
 [dev-packages]
 flake8 = "*"
-pytest = "<4.7"
-zipp = "<2"
 
 [packages]
 polib = ">=1.1.0"
