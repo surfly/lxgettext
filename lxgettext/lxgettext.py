@@ -128,7 +128,7 @@ def update_occurrences(po_obj, data, filename):
             entry.occurrences = new
 
 
-def generate_po(data, filename, args):
+def update_po(data, filename, args):
     """
     Generates po file with messages to translate
     Write data to po file
@@ -145,7 +145,7 @@ def generate_po(data, filename, args):
     # remove all POEntries from the old PO file so we can start from scratch.
     # entries (and possible translations) are retained in the entries dict.
     if args.prune:
-        del po[:]
+        po[:] = []
 
     for match in matches:
 
@@ -172,7 +172,7 @@ def generate_po(data, filename, args):
     print(result)
 
 
-def show_po(data, filename):
+def generate_po(data, filename):
     """
     Generates po file with messages to translate
     """
@@ -189,7 +189,7 @@ def show_po(data, filename):
             ),
             msgid=match
         )
-    print(info)
+    return info
 
 
 def main():
@@ -200,9 +200,9 @@ def main():
         with io.open(item, "r", encoding="utf8") as f:
             data = f.read()
         if args.output:
-            generate_po(data, item, args)
+            update_po(data, item, args)
         else:
-            show_po(data, item)
+            print(generate_po(data, item))
     entries_after = get_number_of_entries(args.output)
     message = "Entries: %s / %s" % (entries_before, entries_after)
     if entries_after > entries_before:
