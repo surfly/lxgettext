@@ -3,6 +3,7 @@ import datetime
 import io
 import os
 import re
+from collections import OrderedDict
 
 import polib
 
@@ -16,6 +17,7 @@ now = datetime.datetime.today().strftime("%Y-%m-%d %X%z")
 
 INFO_TEMPLATE = """#: {occurrence}
 msgid "{msgid}"
+msgstr ""
 """
 
 
@@ -96,46 +98,31 @@ def update_metadata(po, args):
     po.metadata.update(metadata)
 
 
-def get_occurrences(msgid, data, filename):
-    """
-    Get message position in the source file
-    """
-    occurrences = []
-    if msgid in data:
-        pos = 0
-        while pos != -1:
-            pos = data.find(msgid, pos + 1)
-            if pos != -1:
-                # Check that it is prefixed by keyword
-                if "gettext" in data[max(0, pos - len(KEYWORD) * 2 - 1):pos]:
-                    line = data[:pos].count("\n") + 1
-                    occurrences.append((filename, line))
-    return occurrences
+def get_msgids(lines):
+    '''Generates (match, lineno) pairs.'''
+    for i, line in enumerate(lines, start=1):
+        for match in gettext_re.findall(line):
+            yield (match, i)
 
 
-def update_occurrences(po_obj, data, filename):
-    """
-    Update message occurrence
-    """
-    for entry in po_obj:
-        old = entry.occurrences
-        new = []
-        for item in old:
-            if item[0] != filename:
-                new.append(item)
-        new = new + get_occurrences(entry.msgid, data, filename)
-        if new:
-            entry.occurrences = new
-
-
-def update_po(data, filename, args):
+def update_po(paths, args):
     """
     Generates po file with messages to translate
     Write data to po file
     Create new po file if it does not exist
     """
-    matches = gettext_re.findall(data)
-    new_entries = 0
+
+    # msgid -> set( (path, lineno) )
+    matches = OrderedDict()
+
+    for path in paths:
+        print("%s:" % path)
+        with io.open(path, 'r', encoding='utf8') as f:
+            for match, i in get_msgids(f):
+                try:
+                    matches[match].add((path, i))
+                except KeyError:
+                    matches[match] = set([(path, i)])
 
     po = polib.pofile(args.output) if os.path.exists(args.output) \
         else polib.POFile()
@@ -147,7 +134,8 @@ def update_po(data, filename, args):
     if args.prune:
         po[:] = []
 
-    for match in matches:
+    new_entries = 0
+    for match, occurrences in matches.iteritems():
 
         # if the string was already listed in the POFile, keep the POEntry in
         # the POFile
@@ -163,7 +151,8 @@ def update_po(data, filename, args):
             entries[match] = entry
             po.append(entry)
 
-    update_occurrences(po, data, filename)
+        entry.occurrences = list(occurrences)
+
     update_metadata(po, args)
     po.save(args.output)
     result = "  %s new, %s total" % (new_entries, len(matches))
@@ -176,33 +165,36 @@ def generate_po(data, filename):
     """
     Generates po file with messages to translate
     """
-    matches = gettext_re.findall(data)
+
+    data = data.split('\n')
+
+    # collect matches by msgid
+    matches = OrderedDict()
+    for msgid, i in get_msgids(data):
+        try:
+            matches[msgid].add(i)
+        except KeyError:
+            matches[msgid] = set([i])
 
     # Show captured data
-    info = ""
-    for match in matches:
-        occurrence = get_occurrences(match, data, filename)
-        info = info + INFO_TEMPLATE.format(
-            occurrence=", ".join(
-                "%s:%s" % (fn, ln)
-                for (fn, ln) in occurrence
-            ),
-            msgid=match
+    return "\n".join(
+        INFO_TEMPLATE.format(
+            msgid=msgid,
+            occurrence=", ".join("%s:%s" % (filename, i) for i in linenos),
         )
-    return info
+        for msgid, linenos in matches.iteritems()
+    )
 
 
 def main():
     args = get_args()
     entries_before = get_number_of_entries(args.output)
-    for item in args.path:
-        print("%s:" % item)
-        with io.open(item, "r", encoding="utf8") as f:
-            data = f.read()
-        if args.output:
-            update_po(data, item, args)
-        else:
-            print(generate_po(data, item))
+    if args.output:
+        update_po(args.path, args)
+    else:
+        for item in args.path:
+            with io.open(item, "r", encoding="utf8") as f:
+                print(generate_po(f.read(), item))
     entries_after = get_number_of_entries(args.output)
     message = "Entries: %s / %s" % (entries_before, entries_after)
     if entries_after > entries_before:

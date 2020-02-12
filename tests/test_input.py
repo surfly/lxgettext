@@ -7,7 +7,7 @@ import shutil
 import tempfile
 import unittest
 
-from lxgettext.lxgettext import generate_po, get_occurrences, update_po
+from lxgettext.lxgettext import generate_po, get_msgids, update_po
 
 
 class TestInput(unittest.TestCase):
@@ -98,28 +98,38 @@ class TestInput(unittest.TestCase):
 
 class TestOccurrences(unittest.TestCase):
     def test_simple(self):
-        data = "\n\ngettext('banana')\n"
-        msgid = "banana"
-        expected = [('file.js', 3)]
-        result = get_occurrences(msgid, data, "file.js")
+        data = '''
+            gettext('banana')
+        '''
+        expected = [('banana', 2)]
+
+        lines = data.split('\n')
+        result = list(get_msgids(lines))
         self.assertEqual(expected, result)
 
     def test_multiple(self):
-        data = "\n\ngettext('banana')\ngettext('banana')\n"
-        msgid = "banana"
-        expected = [('file.js', 3), ('file.js', 4)]
-        result = get_occurrences(msgid, data, "file.js")
+        data = '''
+            gettext('banana')
+            gettext("banana")
+        '''
+        expected = [('banana', 2), ('banana', 3)]
+
+        lines = data.split('\n')
+        result = list(get_msgids(lines))
         self.assertEqual(expected, result)
 
     def test_fake(self):
-        data = """
-        There is a fake instance with name banana
-        var a = gettext("banana");
-        var banana;
-        """
-        msgid = "banana"
-        expected = [('file.js', 3)]
-        result = get_occurrences(msgid, data, "file.js")
+        data = '''
+            Here are some fake instances with name banana
+            var a = gottext("banana");
+            let x = gettext "banana";
+            const b = gettext(banana);
+            var banana;
+        '''
+        expected = []
+
+        lines = data.split('\n')
+        result = list(get_msgids(lines))
         self.assertEqual(expected, result)
 
 
@@ -153,53 +163,60 @@ class TestFilesystem(unittest.TestCase):
             self.version = 'test'
             self.language = 'xx'
 
-    def assertHasLines(self, expected, result):
-        '''
-        Assert that result contains contiguous lines in `expected` ignoring
-        indentation.
-        '''
-        lines = expected.strip().split('\n')
-        expected = '\n'.join(line.strip() for line in lines)
-        return self.assertIn(expected, result)
+    def assertContents(self, expected, result):
+        # get the PO file after the header
+        _, _, result = result.partition("\n\n")
+
+        # ignore indentation in expected string
+        if expected:
+            lines = expected.strip().split('\n')
+            expected = ''.join(line.lstrip() + '\n' for line in lines)
+
+        return self.assertEqual(expected, result)
 
     def test_new(self):
         source = '''
             gettext('test');
         '''
         expected = '''
-            #: test:2
+            #: {sourcepath}:2
             msgid "test"
             msgstr ""
         '''
 
-        with tmpdir() as d:
-            path = os.path.join(d, 'xx.po')
-            update_po(source, 'test', self.Args(path, prune=True))
-            with open(path, 'r') as f:
-                result = f.read()
+        with tmpfile(source) as sourcepath:
+            expected = expected.format(sourcepath=sourcepath)
+            with tmpdir() as outpath:
+                outpath = os.path.join(outpath, 'xx.po')
+                update_po([sourcepath], self.Args(outpath, prune=True))
+                with open(outpath, 'r') as f:
+                    result = f.read()
 
-        self.assertHasLines(expected, result)
+        self.assertContents(expected, result)
 
     def test_empty_add(self):
+        old_po = ''
         source = '''
             gettext('test');
         '''
         expected = '''
-            #: test:2
+            #: {sourcepath}:2
             msgid "test"
             msgstr ""
         '''
 
-        with tmpfile() as path:
-            update_po(source, 'test', self.Args(path, prune=True))
-            with open(path, 'r') as f:
-                result = f.read()
+        with tmpfile(source) as sourcepath:
+            expected = expected.format(sourcepath=sourcepath)
+            with tmpfile(old_po) as popath:
+                update_po([sourcepath], self.Args(popath, prune=True))
+                with open(popath, 'r') as f:
+                    result = f.read()
 
-        self.assertHasLines(expected, result)
+        self.assertContents(expected, result)
 
     def test_existing_add(self):
         old_po = '''
-            #: test:100
+            #: oldsource:100
             msgid "already here"
             msgstr "ereh ydaerla"
         '''
@@ -208,29 +225,31 @@ class TestFilesystem(unittest.TestCase):
             gettext('to be added');
         '''
         expected = '''
-            #: test:2
+            #: {sourcepath}:2
             msgid "already here"
             msgstr "ereh ydaerla"
 
-            #: test:3
+            #: {sourcepath}:3
             msgid "to be added"
             msgstr ""
         '''
 
-        with tmpfile(old_po) as path:
-            update_po(source, 'test', self.Args(path, prune=True))
-            with open(path, 'r') as f:
-                result = f.read()
+        with tmpfile(source) as sourcepath:
+            expected = expected.format(sourcepath=sourcepath)
+            with tmpfile(old_po) as popath:
+                update_po([sourcepath], self.Args(popath, prune=True))
+                with open(popath, 'r') as f:
+                    result = f.read()
 
-        self.assertHasLines(expected, result)
+        self.assertContents(expected, result)
 
     def test_existing_prune_partial(self):
         old_po = '''
-            #: test:100
+            #: oldsource:100
             msgid "test"
             msgstr "tset"
 
-            #: test:200
+            #: oldsource:200
             msgid "removed"
             msgstr "devomer"
         '''
@@ -238,32 +257,80 @@ class TestFilesystem(unittest.TestCase):
             gettext('test');
         '''
         expected = '''
-            #: test:2
+            #: {sourcepath}:2
             msgid "test"
             msgstr "tset"
         '''
 
-        with tmpfile(old_po) as path:
-            update_po(source, 'test', self.Args(path, prune=True))
-            with open(path, 'r') as f:
-                result = f.read()
+        with tmpfile(source) as sourcepath:
+            expected = expected.format(sourcepath=sourcepath)
+            with tmpfile(old_po) as popath:
+                update_po([sourcepath], self.Args(popath, prune=True))
+                with open(popath, 'r') as f:
+                    result = f.read()
 
-        self.assertHasLines(expected, result)
+        self.assertContents(expected, result)
 
-    def test_existing_prune_all(self):
+    def test_multifile_prune(self):
         old_po = '''
+            #: oldsource:100
+            msgid "test1"
+            msgstr "1tset"
+
+            #: oldsource:200
             msgid "removed"
             msgstr "devomer"
         '''
-        source = '''
+        sources = [
+            "gettext('test0');",
+            "gettext('test1');",
+            "gettext('test2');",
+            "",
+        ]
+        expected = '''
+            #: {}:1
+            msgid "test0"
+            msgstr ""
+
+            #: {}:1
+            msgid "test1"
+            msgstr "1tset"
+
+            #: {}:1
+            msgid "test2"
+            msgstr ""
         '''
 
+        # create each source file
+        with tmpdir() as dpath:
+            spaths = [os.path.join(dpath, "%d.js" % i) for i in range(4)]
+            expected = expected.format(*spaths)
+            for source, spath in zip(sources, spaths):
+                with open(spath, 'w') as f:
+                    f.write(source)
+
+            with tmpfile(old_po) as popath:
+                update_po(spaths, self.Args(popath, prune=True))
+                with open(popath, 'r') as f:
+                    result = f.read()
+
+        self.assertContents(expected, result)
+
+    def test_existing_prune_all(self):
+        old_po = '''
+            #: oldsource:2
+            msgid "removed"
+            msgstr "devomer"
+        '''
+        source = ''
+        expected = ''
+
         with tmpfile(old_po) as path:
-            update_po(source, 'test', self.Args(path, prune=True))
+            update_po(source, self.Args(path, prune=True))
             with open(path, 'r') as f:
                 result = f.read()
 
-        self.assertNotIn('msgid "removed"', result)
+        self.assertContents(expected, result)
 
 
 if __name__ == '__main__':
