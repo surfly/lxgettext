@@ -271,7 +271,7 @@ class TestFilesystem(unittest.TestCase):
 
         self.assertContents(expected, result)
 
-    def test_multifile_prune(self):
+    def _test_multifile(self, prune):
         old_po = '''
             #: oldsource:100
             msgid "test1"
@@ -310,11 +310,17 @@ class TestFilesystem(unittest.TestCase):
                     f.write(source)
 
             with tmpfile(old_po) as popath:
-                update_po(spaths, self.Args(popath, prune=True))
+                update_po(spaths, self.Args(popath, prune=prune))
                 with open(popath, 'r') as f:
                     result = f.read()
 
         self.assertContents(expected, result)
+
+    def test_multifile(self):
+        return self._test_multifile(False)
+
+    def test_multifile_prune(self):
+        return self._test_multifile(True)
 
     def test_existing_prune_all(self):
         old_po = '''
