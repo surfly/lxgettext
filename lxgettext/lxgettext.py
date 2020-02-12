@@ -127,12 +127,16 @@ def update_po(paths, args):
     po = polib.pofile(args.output) if os.path.exists(args.output) \
         else polib.POFile()
 
+    # remove old occurrences
+    for entry in po:
+        del entry.occurrences[:]
+
     entries = {entry.msgid: entry for entry in po}
 
     # remove all POEntries from the old PO file so we can start from scratch.
     # entries (and possible translations) are retained in the entries dict.
     if args.prune:
-        po[:] = []
+        del po[:]
 
     new_entries = 0
     for match, occurrences in matches.iteritems():

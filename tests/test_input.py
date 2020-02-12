@@ -271,7 +271,63 @@ class TestFilesystem(unittest.TestCase):
 
         self.assertContents(expected, result)
 
-    def _test_multifile(self, prune):
+    def test_multifile(self):
+        old_po = '''
+            #: oldsource:100
+            msgid "test2"
+            msgstr "2tset"
+
+            #: oldsource:200
+            msgid "removed"
+            msgstr "devomer"
+        '''
+        sources = [
+            "~" * 100,
+            "gettext('test1');",
+            "gettext('test2');",
+            "gettext('test3');",
+            "",
+        ]
+        expected = '''
+            #: {2}:1
+            msgid "test2"
+            msgstr "2tset"
+
+            msgid "removed"
+            msgstr "devomer"
+
+            #: {1}:1
+            msgid "test1"
+            msgstr ""
+
+            #: {3}:1
+            msgid "test3"
+            msgstr ""
+        '''
+
+        with tmpdir() as dpath:
+
+            # create each source file
+            spaths = [os.path.join(dpath, "%d.js" % i) for i, _ in enumerate(sources)]
+            expected = expected.format(*spaths)
+            for source, spath in zip(sources, spaths):
+                with open(spath, 'w') as f:
+                    f.write(source)
+
+            # write old PO file
+            popath = os.path.join(dpath, 'xx.po')
+            with open(popath, 'w') as f:
+                f.write(old_po)
+
+            # update PO file using new source files
+            update_po(spaths, self.Args(popath))
+
+            # check PO output
+            with open(popath, 'r') as f:
+                result = f.read()
+            self.assertContents(expected, result)
+
+    def test_multifile_prune(self):
         old_po = '''
             #: oldsource:100
             msgid "test1"
@@ -282,45 +338,47 @@ class TestFilesystem(unittest.TestCase):
             msgstr "devomer"
         '''
         sources = [
+            "",
             "gettext('test0');",
             "gettext('test1');",
             "gettext('test2');",
             "",
         ]
         expected = '''
-            #: {}:1
+            #: {1}:1
             msgid "test0"
             msgstr ""
 
-            #: {}:1
+            #: {2}:1
             msgid "test1"
             msgstr "1tset"
 
-            #: {}:1
+            #: {3}:1
             msgid "test2"
             msgstr ""
         '''
 
-        # create each source file
         with tmpdir() as dpath:
-            spaths = [os.path.join(dpath, "%d.js" % i) for i in range(4)]
+
+            # create each source file
+            spaths = [os.path.join(dpath, "%d.js" % i) for i, _ in enumerate(sources)]
             expected = expected.format(*spaths)
             for source, spath in zip(sources, spaths):
                 with open(spath, 'w') as f:
                     f.write(source)
 
-            with tmpfile(old_po) as popath:
-                update_po(spaths, self.Args(popath, prune=prune))
-                with open(popath, 'r') as f:
-                    result = f.read()
+            # write old PO file
+            popath = os.path.join(dpath, 'xx.po')
+            with open(popath, 'w') as f:
+                f.write(old_po)
 
-        self.assertContents(expected, result)
+            # update PO file using new source files
+            update_po(spaths, self.Args(popath, prune=True))
 
-    def test_multifile(self):
-        return self._test_multifile(False)
-
-    def test_multifile_prune(self):
-        return self._test_multifile(True)
+            # check PO output
+            with open(popath, 'r') as f:
+                result = f.read()
+            self.assertContents(expected, result)
 
     def test_existing_prune_all(self):
         old_po = '''
