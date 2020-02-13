@@ -12,7 +12,7 @@ setup(
     url="https://github.com/surfly/lxgettext",
     license="BSD",
     test_suite="tests",
-    install_requires=["polib==1.0.8"],
+    install_requires=["polib>=1.1.0"],
     entry_points={
         "console_scripts": [
             "lxgettext = lxgettext.lxgettext:main",
