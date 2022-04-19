@@ -192,18 +192,20 @@ def generate_po(data, filename):
 
 def main():
     args = get_args()
-    entries_before = get_number_of_entries(args.output)
     if args.output:
+        entries_before = get_number_of_entries(args.output)
         update_po(args.path, args)
+        entries_after = get_number_of_entries(args.output)
+        message = "Entries: %s / %s" % (entries_before, entries_after)
+        if entries_after > entries_before:
+            message = COLOUR_GREEN + message + COLOUR_END
+        if args.language:
+            message = '[%s] %s' % (args.language, message)
+        print(message)
     else:
         for item in args.path:
             with io.open(item, "r", encoding="utf8") as f:
                 print(generate_po(f.read(), item))
-    entries_after = get_number_of_entries(args.output)
-    message = "Entries: %s / %s" % (entries_before, entries_after)
-    if entries_after > entries_before:
-        message = COLOUR_GREEN + message + COLOUR_END
-    print(message)
 
 
 if __name__ == '__main__':
