@@ -65,6 +65,23 @@ def get_args():
         help='Language of the source file'
     )
     parser.add_argument(
+        '--find',
+        metavar="REGEX",
+        type=re.compile,
+        action='store',
+        help="Search PATHs for files whose full paths match REGEX, then look "
+        "in those files for gettext() calls."
+    )
+    parser.add_argument(
+        '--find-exclude',
+        metavar="REGEX",
+        type=re.compile,
+        action='store',
+        help="Search PATHs for files whose full paths don't match REGEX, then "
+        "look in those files for gettext() calls. If any directory matches "
+        "REGEX, then that directory won't be searched."
+    )
+    parser.add_argument(
         '--verbose',
         action='store_true'
     )
@@ -196,8 +213,55 @@ def generate_po(data, filename):
     )
 
 
+def check_path(path, include_re, exclude_re):
+    if include_re and not include_re.search(path):
+        return False
+    if exclude_re and exclude_re.search(path):
+        return False
+    return True
+
+
+def prune_subdirs(dirpath, dirnames, exclude_re, verbose=False):
+    if not exclude_re:
+        return
+    to_delete = []
+    for i, dirname in enumerate(dirnames):
+        path = os.path.join(dirpath, dirname)
+        if exclude_re.search(path):
+            if verbose:
+                print(
+                    "Not entering directory '%s' because it matches the "
+                    "exclude pattern." % path
+                )
+            to_delete.append(i)
+    for i in to_delete[::-1]:
+        del dirnames[i]
+
+
+def find_files(path_args, include_re, exclude_re, verbose=False):
+    for arg in path_args:
+        if os.path.isdir(arg):
+            for dirpath, dirnames, filenames in os.walk(arg):
+                prune_subdirs(dirpath, dirnames, exclude_re, verbose=verbose)
+                for filename in filenames:
+                    path = os.path.join(dirpath, filename)
+                    if check_path(path, include_re, exclude_re):
+                        yield path
+        elif check_path(arg, include_re, exclude_re):
+            yield arg
+
+
 def main():
     args = get_args()
+
+    if args.find or args.find_exclude:
+        args.path = list(find_files(
+            args.path,
+            include_re=args.find,
+            exclude_re=args.find_exclude,
+            verbose=args.verbose
+        ))
+
     if args.output:
         entries_before = get_number_of_entries(args.output)
         update_po(args.path, args)
