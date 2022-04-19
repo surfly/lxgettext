@@ -29,7 +29,7 @@ def valid_path(path):
 
 def get_args():
     parser = argparse.ArgumentParser(
-        "Extract gettext records from the files using `gettext(...)` as a"
+        "Extract gettext records from the files using `gettext(...)` as a "
         "keyword"
     )
     parser.add_argument(
@@ -43,7 +43,7 @@ def get_args():
     parser.add_argument(
         '-p', '--prune',
         action='store_true',
-        help="Remove existing entries that have a msgid that doesn't"
+        help="Remove existing entries that have a msgid that doesn't "
         "correspond to any string in the input PATHs.",
     )
     parser.add_argument(
