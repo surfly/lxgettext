@@ -44,7 +44,7 @@ def main():
             po_dict[entry.msgid] = entry.msgstr
     if args.output:
         with io.open(args.output, "w", encoding="utf8") as f:
-            data = json.dumps(po_dict, f, ensure_ascii=False)
+            data = json.dumps(po_dict, f, ensure_ascii=False, sort_keys=True)
             f.write(unicode(data))
         print(COLOUR_GREEN + "%s: %s empty" % (args.output, len(po) - len(po_dict)) + COLOUR_END)
     else:
