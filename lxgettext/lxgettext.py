@@ -64,6 +64,10 @@ def get_args():
         action='store',
         help='Language of the source file'
     )
+    parser.add_argument(
+        '--verbose',
+        action='store_true'
+    )
     args = parser.parse_args()
     return args
 
@@ -116,7 +120,8 @@ def update_po(paths, args):
     matches = OrderedDict()
 
     for path in paths:
-        print("%s:" % path)
+        if args.verbose:
+            print("%s:" % path)
         with io.open(path, 'r', encoding='utf8') as f:
             for match, i in get_msgids(f):
                 try:
@@ -162,7 +167,8 @@ def update_po(paths, args):
     result = "  %s new, %s total" % (new_entries, len(matches))
     if new_entries > 0:
         result = COLOUR_GREEN + result + COLOUR_END
-    print(result)
+    if args.verbose:
+        print(result)
 
 
 def generate_po(data, filename):
