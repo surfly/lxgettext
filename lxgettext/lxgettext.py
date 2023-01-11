@@ -139,7 +139,7 @@ def update_po(paths, args):
         del po[:]
 
     new_entries = 0
-    for match, occurrences in matches.iteritems():
+    for match, occurrences in matches.items():
 
         # if the string was already listed in the POFile, keep the POEntry in
         # the POFile
@@ -186,7 +186,7 @@ def generate_po(data, filename):
             msgid=msgid,
             occurrence=", ".join("%s:%s" % (filename, i) for i in linenos),
         )
-        for msgid, linenos in matches.iteritems()
+        for msgid, linenos in matches.items()
     )
 
 
